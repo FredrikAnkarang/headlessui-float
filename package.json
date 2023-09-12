@@ -34,7 +34,8 @@
     "vue": "yarn workspace @headlessui-float/vue",
     "vue:example": "yarn workspace headlessui-float-example-vue",
     "vue-ts:example": "yarn workspace headlessui-float-example-vue-ts",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "prepare": "npm run build"
   },
   "devDependencies": {
     "@ycs77/eslint-config": "^0.1.4",
