@@ -28,7 +28,7 @@
           Options
         </MenuButton>
 
-        <MenuItems static class="w-48 bg-white border border-gray-200 rounded-md shadow-lg overflow-hidden focus:outline-none">
+        <MenuItems static class="box-border overflow-auto min-h-[50px] w-48 bg-white border border-gray-200 rounded-md shadow-lg focus:outline-none">
           <MenuItem v-slot="{ active }">
             <button type="button" class="block w-full px-4 py-1.5 text-left text-sm" :class="{ 'bg-indigo-500 text-white': active }">
               Account settings

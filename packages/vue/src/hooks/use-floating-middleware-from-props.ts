@@ -1,5 +1,5 @@
 import { type ComputedRef, type Ref, type ShallowRef, watch } from 'vue'
-import { autoPlacement, flip, hide, offset, shift } from '@floating-ui/dom'
+import { autoPlacement, flip, hide, offset, shift, size } from '@floating-ui/dom'
 import type { DetectOverflowOptions, Middleware, ReferenceElement } from '@floating-ui/dom'
 import type { Options as OffsetOptions } from '@floating-ui/core/src/middleware/offset'
 import type { Options as ShiftOptions } from '@floating-ui/core/src/middleware/shift'
@@ -35,7 +35,17 @@ export function useFloatingMiddlewareFromProps(
     () => props.hide,
     () => props.middleware,
   ], () => {
-    const _middleware = []
+    const _middleware = [
+      size({
+        apply({availableWidth, availableHeight, elements}) {
+          // Do things with the data, e.g.
+          Object.assign(elements.floating.style, {
+            maxWidth: `${availableWidth - 8 }px`,
+            maxHeight: `${availableHeight - 8 }px`,
+          });
+        },
+      })
+    ]
     if (typeof props.offset === 'number' ||
         typeof props.offset === 'object' ||
         typeof props.offset === 'function'
