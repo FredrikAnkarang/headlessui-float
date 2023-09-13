@@ -39,6 +39,7 @@
   },
   "scripts": {
     "build": "sh scripts/build.sh",
+    "prepare": "npm run build",
     "watch": "vite build --watch",
     "type-check": "vue-tsc --noEmit",
     "test:unit": "vitest --root test/unit/",

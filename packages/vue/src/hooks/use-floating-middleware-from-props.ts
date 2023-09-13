@@ -40,8 +40,8 @@ export function useFloatingMiddlewareFromProps(
         apply({availableWidth, availableHeight, elements}) {
           // Do things with the data, e.g.
           Object.assign(elements.floating.style, {
-            maxWidth: `${availableWidth - 8 }px`,
-            maxHeight: `${availableHeight - 8 }px`,
+            maxWidth: `${availableWidth - 16 }px`,
+            maxHeight: `${availableHeight - 16 }px`,
           });
         },
       })
