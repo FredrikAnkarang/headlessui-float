@@ -1,9 +1,12 @@
+/* eslint-disable ts/ban-ts-comment, ts/prefer-ts-expect-error */
 /** @ts-ignore */
 import type { ComponentResolver } from 'unplugin-vue-components'
 
 const components = [
   'Float',
   'FloatArrow',
+  'FloatContent',
+  'FloatReference',
 ]
 
 export interface HeadlessUiFloatResolverOptions {

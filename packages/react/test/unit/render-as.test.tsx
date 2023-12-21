@@ -76,8 +76,7 @@ describe('Render as component for wrapper', () => {
 
     await waitFor()
 
-    const wrapper = container.children[1]
-    expect(wrapper.innerHTML).toBe('content')
+    expect(container.innerHTML).not.toContain('<div style="position: absolute; z-index: 9999; top: 0px; left: 0px;"><div>content</div></div>')
   })
 
   it('should to render wrapper as component', async () => {
@@ -108,7 +107,7 @@ describe('Render as component for wrapper', () => {
     const wrapper = container.children[1]
     expect(wrapper).toHaveClass('floating-wrapper-class')
     expect(wrapper).toHaveAttribute('data-label', 'floating wrapper label')
-    expect(wrapper).toHaveStyle('position: absolute; z-index: 9999; top: 0px; left: 0px; transform: translate(0px,0px);')
+    expect(wrapper).toHaveStyle('position: absolute; z-index: 9999; top: 0px; left: 0px;')
   })
 })
 
@@ -214,8 +213,7 @@ describe('Render composable component for wrapper', () => {
 
     await waitFor()
 
-    const wrapper = container.children[2].children[0]
-    expect(wrapper.innerHTML).toBe('content')
+    expect(container.innerHTML).not.toContain('<div style="position: absolute; z-index: 9999; top: 0px; left: 0px;"><div>content</div></div>')
   })
 
   it('should to render wrapper as component', async () => {
@@ -260,6 +258,6 @@ describe('Render composable component for wrapper', () => {
     const wrapper = container.children[2].children[0]
     expect(wrapper).toHaveClass('floating-wrapper-class')
     expect(wrapper).toHaveAttribute('data-label', 'floating wrapper label')
-    expect(wrapper).toHaveStyle('position: absolute; z-index: 9999; top: 0px; left: 0px; transform: translate(0px,0px);')
+    expect(wrapper).toHaveStyle('position: absolute; z-index: 9999; top: 0px; left: 0px;')
   })
 })

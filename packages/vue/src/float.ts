@@ -20,17 +20,17 @@ import { Portal, TransitionChild } from '@headlessui/vue'
 import { useFloating } from '@floating-ui/vue'
 import { autoUpdate } from '@floating-ui/dom'
 import type { DetectOverflowOptions, FloatingElement, Middleware, Placement, ReferenceElement, Strategy, VirtualElement } from '@floating-ui/dom'
-import type { Options as OffsetOptions } from '@floating-ui/core/src/middleware/offset'
-import type { Options as ShiftOptions } from '@floating-ui/core/src/middleware/shift'
-import type { Options as FlipOptions } from '@floating-ui/core/src/middleware/flip'
-import type { Options as AutoPlacementOptions } from '@floating-ui/core/src/middleware/autoPlacement'
-import type { Options as HideOptions } from '@floating-ui/core/src/middleware/hide'
-import type { Options as AutoUpdateOptions } from '@floating-ui/dom/src/autoUpdate'
+import type { OffsetOptions } from '@floating-ui/core/src/middleware/offset'
+import type { ShiftOptions } from '@floating-ui/core/src/middleware/shift'
+import type { FlipOptions } from '@floating-ui/core/src/middleware/flip'
+import type { AutoPlacementOptions } from '@floating-ui/core/src/middleware/autoPlacement'
+import type { HideOptions } from '@floating-ui/core/src/middleware/hide'
+import type { AutoUpdateOptions } from '@floating-ui/dom/src/autoUpdate'
 import { dom } from './utils/dom'
-import { env } from './utils/env'
+import { roundByDPR } from './utils/dpr'
 import { flattenFragment, isValidElement, isVisibleDOMElement } from './utils/render'
 import { getOwnerDocument } from './utils/owner'
-import { type OriginClassResolver } from './origin-class-resolvers'
+import type { ClassResolver } from './class-resolvers'
 import { useFloatingMiddlewareFromProps } from './hooks/use-floating-middleware-from-props'
 import { useReferenceElResizeObserver } from './hooks/use-reference-el-resize-observer'
 import { useTransitionAndOriginClass } from './hooks/use-transition-and-origin-class'
@@ -47,10 +47,16 @@ interface FloatingState {
   props: FloatProps
   mounted: Ref<boolean>
   show: Ref<boolean>
-  x: Readonly<Ref<number | null>>
-  y: Readonly<Ref<number | null>>
+  referenceHidden: Ref<boolean | undefined>
+  escaped: Ref<boolean | undefined>
   placement: Readonly<Ref<Placement>>
-  strategy: Readonly<Ref<Strategy>>
+  floatingStyles: Ref<{
+    position: Strategy
+    top: string
+    left: string
+    transform?: string
+    willChange?: string
+  }>
   referenceElWidth: Ref<number | null>
   updateFloating: () => void
 }
@@ -107,7 +113,9 @@ export interface FloatProps {
   flip?: boolean | number | Partial<FlipOptions & DetectOverflowOptions>
   arrow?: boolean | number
   autoPlacement?: boolean | Partial<AutoPlacementOptions & DetectOverflowOptions>
-  hide?: boolean | Partial<HideOptions & DetectOverflowOptions>
+  hide?: boolean | Partial<HideOptions & DetectOverflowOptions> | Partial<HideOptions & DetectOverflowOptions>[]
+  referenceHiddenClass?: string
+  escapedClass?: string
   autoUpdate?: boolean | Partial<AutoUpdateOptions>
   zIndex?: number | string
   transitionName?: string
@@ -118,7 +126,7 @@ export interface FloatProps {
   leave?: string
   leaveFrom?: string
   leaveTo?: string
-  originClass?: string | OriginClassResolver
+  originClass?: string | ClassResolver
   tailwindcssOriginClass?: boolean
   portal?: boolean
   transform?: boolean
@@ -173,9 +181,11 @@ export const FloatPropsValidators = {
     default: false,
   },
   hide: {
-    type: [Boolean, Object] as PropType<boolean | Partial<HideOptions & DetectOverflowOptions>>,
+    type: [Boolean, Object, Array] as PropType<boolean | Partial<HideOptions & DetectOverflowOptions> | Partial<HideOptions & DetectOverflowOptions>[]>,
     default: false,
   },
+  referenceHiddenClass: String,
+  escapedClass: String,
   autoUpdate: {
     type: [Boolean, Object] as PropType<boolean | Partial<AutoUpdateOptions>>,
     default: true,
@@ -192,7 +202,7 @@ export const FloatPropsValidators = {
   leave: String,
   leaveFrom: String,
   leaveTo: String,
-  originClass: [String, Function] as PropType<string | OriginClassResolver>,
+  originClass: [String, Function] as PropType<string | ClassResolver>,
   tailwindcssOriginClass: {
     type: Boolean,
     default: false,
@@ -203,7 +213,7 @@ export const FloatPropsValidators = {
   },
   transform: {
     type: Boolean,
-    default: true,
+    default: false,
   },
   adaptiveWidth: {
     type: Boolean,
@@ -270,7 +280,7 @@ export function renderFloatingElement(
   attrs: SetupContext['attrs'],
   context: FloatingState
 ) {
-  const { floatingRef, props: rootProps, mounted, show, x, y, placement, strategy, referenceElWidth, updateFloating } = context
+  const { floatingRef, props: rootProps, mounted, show, referenceHidden, escaped, placement, floatingStyles, referenceElWidth, updateFloating } = context
 
   const props = mergeProps(
     { ...rootProps, as: rootProps.floatingAs } as Record<string, any>,
@@ -313,22 +323,14 @@ export function renderFloatingElement(
   }
 
   const floatingProps = {
+    class: [
+      referenceHidden.value ? props.referenceHiddenClass : undefined,
+      escaped.value ? props.escapedClass : undefined,
+    ].filter(c => !!c).join(' '),
+
     style: {
-      // If enable dialog mode, then set `transform` to false.
-      ...((props.dialog ? false : props.transform) ? {
-        position: strategy.value,
-        zIndex: props.zIndex,
-        top: '0px',
-        left: '0px',
-        right: 'auto',
-        bottom: 'auto',
-        transform: `translate(${Math.round(x.value || 0)}px,${Math.round(y.value || 0)}px)`,
-      } : {
-        position: strategy.value,
-        zIndex: props.zIndex,
-        top: `${y.value || 0}px`,
-        left: `${x.value || 0}px`,
-      }),
+      ...floatingStyles.value,
+      zIndex: props.zIndex,
       width: props.adaptiveWidth && typeof referenceElWidth.value === 'number'
         ? `${referenceElWidth.value}px`
         : undefined,
@@ -337,7 +339,10 @@ export function renderFloatingElement(
 
   function renderPortal(node: VNode) {
     if (props.portal) {
-      return h(Portal, () => node)
+      if (mounted.value) {
+        return h(Portal, () => node)
+      }
+      return createCommentVNode()
     }
     return node
   }
@@ -380,10 +385,7 @@ export function renderFloatingElement(
       return createCommentVNode()
     }
 
-    if (env.isServer) {
-      if (mounted.value && props.show) {
-        return createFloatingNode()
-      }
+    if (!mounted.value) {
       return createCommentVNode()
     }
 
@@ -420,7 +422,12 @@ export function useFloat<T extends ReferenceElement>(
 
   const propPlacement = toRef(props, 'placement')
   const propStrategy = toRef(props, 'strategy')
+
   const middleware = shallowRef({}) as ShallowRef<Middleware[]>
+
+  const referenceHidden = ref<boolean | undefined>(undefined)
+  const escaped = ref<boolean | undefined>(undefined)
+
   const arrowRef = ref(null) as Ref<HTMLElement | null>
   const arrowX = ref<number | undefined>(undefined)
   const arrowY = ref<number | undefined>(undefined)
@@ -433,11 +440,11 @@ export function useFloat<T extends ReferenceElement>(
     isVisibleDOMElement(floatingEl)
   )
 
-  const { x, y, placement, strategy, middlewareData, update } = useFloating<T>(referenceEl, floatingEl, {
+  const { placement, middlewareData, isPositioned, floatingStyles, update } = useFloating<T>(referenceEl, floatingEl, {
     placement: propPlacement,
     strategy: propStrategy,
     middleware,
-    whileElementsMounted: () => {},
+    transform: props.dialog ? false : props.transform, // If enable dialog mode, then set `transform` to false.
   })
 
   const referenceElWidth = ref<number | null>(null)
@@ -471,15 +478,22 @@ export function useFloat<T extends ReferenceElement>(
     props
   )
 
+  watch([middlewareData, () => props.hide, isPositioned], () => {
+    if (props.hide === true || typeof props.hide === 'object' || Array.isArray(props.hide)) {
+      referenceHidden.value = middlewareData.value.hide?.referenceHidden || !isPositioned.value
+      escaped.value = middlewareData.value.hide?.escaped
+    }
+  })
+
   watch(middlewareData, () => {
-    const arrowData = middlewareData.value.arrow as { x?: number, y?: number }
+    const arrowData = middlewareData.value.arrow as { x?: number, y?: number } | undefined
     arrowX.value = arrowData?.x
     arrowY.value = arrowData?.y
   })
 
   useReferenceElResizeObserver(props.adaptiveWidth, referenceEl, referenceElWidth)
 
-  watch(show, async (value, oldValue, onInvalidate) => {
+  watch([show, isVisible], async (value, oldValue, onInvalidate) => {
     await nextTick()
 
     if (show.value && isVisible.value && props.autoUpdate) {
@@ -519,10 +533,10 @@ export function useFloat<T extends ReferenceElement>(
     props,
     mounted,
     show,
-    x,
-    y,
+    referenceHidden,
+    escaped,
     placement,
-    strategy,
+    floatingStyles,
     referenceElWidth,
     updateFloating,
   }
@@ -536,7 +550,7 @@ export function useFloat<T extends ReferenceElement>(
 
   provide(ArrowContext, arrowApi)
 
-  return { referenceApi, floatingApi, arrowApi, x, y, placement, strategy, referenceEl, floatingEl, middlewareData, update: updateFloating }
+  return { referenceApi, floatingApi, arrowApi, placement, referenceEl, floatingEl, middlewareData, update: updateFloating }
 }
 
 export const Float = {
@@ -763,8 +777,12 @@ export const FloatArrow = {
       }[placement.value.split('-')[0]]!
 
       const style = {
-        left: typeof x.value === 'number' ? `${x.value}px` : undefined,
-        top: typeof y.value === 'number' ? `${y.value}px` : undefined,
+        left: ref.value && typeof x.value === 'number'
+          ? `${roundByDPR(ref.value, x.value)}px`
+          : undefined,
+        top: ref.value && typeof y.value === 'number'
+          ? `${roundByDPR(ref.value, y.value)}px`
+          : undefined,
         right: undefined,
         bottom: undefined,
         [staticSide]: `${props.offset! * -1}px`,
@@ -794,7 +812,7 @@ export const FloatArrow = {
   }
 }
 
-export interface FloatVirtualProps<FloatingElement = HTMLElement> extends Pick<FloatProps, 'as' | 'show' | 'placement' | 'strategy' | 'offset' | 'shift' | 'flip' | 'arrow' | 'autoPlacement' | 'hide' | 'autoUpdate' | 'zIndex' | 'transitionName' | 'transitionType' | 'enter' | 'enterFrom' | 'enterTo' | 'leave' | 'leaveFrom' | 'leaveTo' | 'originClass' | 'tailwindcssOriginClass' | 'portal' | 'transform' | 'middleware' | 'onShow' | 'onHide' | 'onUpdate'> {
+export interface FloatVirtualProps<FloatingElement = HTMLElement> extends Pick<FloatProps, 'as' | 'show' | 'placement' | 'strategy' | 'offset' | 'shift' | 'flip' | 'arrow' | 'autoPlacement' | 'autoUpdate' | 'zIndex' | 'transitionName' | 'transitionType' | 'enter' | 'enterFrom' | 'enterTo' | 'leave' | 'leaveFrom' | 'leaveTo' | 'originClass' | 'tailwindcssOriginClass' | 'portal' | 'transform' | 'middleware' | 'onShow' | 'onHide' | 'onUpdate'> {
   onInitial?: (props: FloatVirtualInitialProps<FloatingElement>) => any
 }
 
@@ -808,7 +826,6 @@ export const FloatVirtualPropsValidators = {
   flip: FloatPropsValidators.flip,
   arrow: FloatPropsValidators.arrow,
   autoPlacement: FloatPropsValidators.autoPlacement,
-  hide: FloatPropsValidators.hide,
   autoUpdate: FloatPropsValidators.autoUpdate,
   zIndex: FloatPropsValidators.zIndex,
   transitionName: FloatPropsValidators.transitionName,
@@ -925,7 +942,6 @@ export const FloatContextMenuPropsValidators = {
   },
   arrow: FloatPropsValidators.arrow,
   autoPlacement: FloatPropsValidators.autoPlacement,
-  hide: FloatPropsValidators.hide,
   autoUpdate: FloatPropsValidators.autoUpdate,
   zIndex: FloatPropsValidators.zIndex,
   transitionName: FloatPropsValidators.transitionName,
@@ -948,6 +964,8 @@ export const FloatContextMenu = {
   props: FloatContextMenuPropsValidators,
   emits: ['show', 'hide', 'update'],
   setup(props: FloatContextMenuProps, { emit, slots, attrs }: SetupContext<['show', 'hide', 'update']>) {
+    const mounted = ref(false)
+
     function onInitial({ show, reference, floating }: FloatVirtualInitialProps) {
       useDocumentEvent('contextmenu', e => {
         e.preventDefault()
@@ -975,8 +993,13 @@ export const FloatContextMenu = {
       }, computed(() => show.value))
     }
 
+    onMounted(() => {
+      mounted.value = true
+    })
+
     return () => {
       if (!slots.default) return
+      if (!mounted.value) return
 
       return h(FloatVirtual, {
         ...props,
@@ -1011,7 +1034,6 @@ export const FloatCursorPropsValidators = {
   flip: FloatPropsValidators.flip,
   arrow: FloatPropsValidators.arrow,
   autoPlacement: FloatPropsValidators.autoPlacement,
-  hide: FloatPropsValidators.hide,
   autoUpdate: FloatPropsValidators.autoUpdate,
   zIndex: FloatPropsValidators.zIndex,
   transitionName: FloatPropsValidators.transitionName,
@@ -1038,6 +1060,8 @@ export const FloatCursor = {
   props: FloatCursorPropsValidators,
   emits: ['show', 'hide', 'update'],
   setup({ globalHideCursor, ...props }: FloatCursorProps, { emit, slots, attrs }: SetupContext<['show', 'hide', 'update']>) {
+    const mounted = ref(false)
+
     function onInitial({ show, reference, floating }: FloatVirtualInitialProps) {
       function open() {
         show.value = true
@@ -1108,8 +1132,13 @@ export const FloatCursor = {
       }
     }
 
+    onMounted(() => {
+      mounted.value = true
+    })
+
     return () => {
       if (!slots.default) return
+      if (!mounted.value) return
 
       return h(FloatVirtual, {
         ...props,

@@ -1,11 +1,11 @@
 import { type ComputedRef, type Ref, type ShallowRef, watch } from 'vue'
 import { autoPlacement, flip, hide, offset, shift, size } from '@floating-ui/dom'
 import type { DetectOverflowOptions, Middleware, ReferenceElement } from '@floating-ui/dom'
-import type { Options as OffsetOptions } from '@floating-ui/core/src/middleware/offset'
-import type { Options as ShiftOptions } from '@floating-ui/core/src/middleware/shift'
-import type { Options as FlipOptions } from '@floating-ui/core/src/middleware/flip'
-import type { Options as AutoPlacementOptions } from '@floating-ui/core/src/middleware/autoPlacement'
-import type { Options as HideOptions } from '@floating-ui/core/src/middleware/hide'
+import type { OffsetOptions } from '@floating-ui/core/src/middleware/offset'
+import type { ShiftOptions } from '@floating-ui/core/src/middleware/shift'
+import type { FlipOptions } from '@floating-ui/core/src/middleware/flip'
+import type { AutoPlacementOptions } from '@floating-ui/core/src/middleware/autoPlacement'
+import type { HideOptions } from '@floating-ui/core/src/middleware/hide'
 import { arrow } from '@floating-ui/vue'
 
 export function useFloatingMiddlewareFromProps(
@@ -19,7 +19,7 @@ export function useFloatingMiddlewareFromProps(
     flip?: boolean | number | Partial<FlipOptions & DetectOverflowOptions>
     arrow?: boolean | number
     autoPlacement?: boolean | Partial<AutoPlacementOptions & DetectOverflowOptions>
-    hide?: boolean | Partial<HideOptions & DetectOverflowOptions>
+    hide?: boolean | Partial<HideOptions & DetectOverflowOptions> | Partial<HideOptions & DetectOverflowOptions>[]
     middleware?: Middleware[] | ((refs: {
       referenceEl: ComputedRef<ReferenceElement | null>
       floatingEl: ComputedRef<HTMLElement | null>
@@ -77,12 +77,6 @@ export function useFloatingMiddlewareFromProps(
           : undefined
       ))
     }
-    if (props.arrow === true || typeof props.arrow === 'number') {
-      _middleware.push(arrow({
-        element: arrowRef,
-        padding: props.arrow === true ? 0 : props.arrow,
-      }))
-    }
     _middleware.push(...(
       typeof props.middleware === 'function'
         ? props.middleware({
@@ -91,10 +85,18 @@ export function useFloatingMiddlewareFromProps(
         })
         : props.middleware || []
     ))
-    if (props.hide === true || typeof props.hide === 'object') {
-      _middleware.push(hide(
-        typeof props.hide === 'object' ? props.hide : undefined
-      ))
+    if (props.arrow === true || typeof props.arrow === 'number') {
+      _middleware.push(arrow({
+        element: arrowRef,
+        padding: props.arrow === true ? 0 : props.arrow,
+      }))
+    }
+    if (props.hide === true || typeof props.hide === 'object' || Array.isArray(props.hide)) {
+      (Array.isArray(props.hide) ? props.hide : [props.hide]).forEach(hideOptions => {
+        _middleware.push(hide(
+          typeof hideOptions === 'object' ? hideOptions : undefined
+        ))
+      })
     }
     middleware.value = _middleware
   }, { immediate: true })

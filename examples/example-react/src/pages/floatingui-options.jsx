@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Menu } from '@headlessui/react'
+import { useEffect, useRef, useState } from 'react'
+import { Menu, Popover } from '@headlessui/react'
 import { Float } from '@headlessui-float/react'
 import Block from '@/components/Block'
 
@@ -10,6 +10,7 @@ export default function ExampleFloatinguiOptions() {
       <ExampleOffset />
       <ExampleShift />
       <ExampleFlip />
+      <ExampleHide />
     </>
   )
 }
@@ -21,7 +22,7 @@ function ExamplePlacement() {
       title="Placement"
       contentClass="relative h-[320px] flex justify-center items-center border rounded"
       data-testid="block-placement"
-      form={
+      form={(
         <div className="absolute top-0 right-0">
           <div className="flex items-center">
             <div className="mr-2">placement</div>
@@ -46,10 +47,10 @@ function ExamplePlacement() {
             </select>
           </div>
         </div>
-      }
+      )}
     >
       <Menu>
-        <Float show placement={placement} zIndex={99}>
+        <Float show placement={placement} zIndex={99} transform>
           <Menu.Button className="flex justify-center items-center px-5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-500 text-sm rounded-md">
             Options
           </Menu.Button>
@@ -92,7 +93,7 @@ function ExampleOffset() {
       title="Offset"
       contentClass="relative h-[320px] border rounded"
       data-testid="block-offset"
-      form={
+      form={(
         <div className="absolute top-0 right-0">
           <div className="flex items-center">
             <div className="mr-2">offset</div>
@@ -100,15 +101,15 @@ function ExampleOffset() {
               type="number"
               className="w-[100px] px-2 py-1 border border-gray-300 rounded"
               value={offset}
-              onChange={event => setOffset(parseInt(event.target.value))}
+              onChange={event => setOffset(Number.parseInt(event.target.value))}
               data-testid="offset-input"
             />
           </div>
         </div>
-      }
+      )}
     >
       <Menu>
-        <Float show placement="bottom-start" offset={offset} zIndex={99}>
+        <Float show placement="bottom-start" offset={offset} zIndex={99} transform>
           <Menu.Button className="flex justify-center items-center mx-auto px-5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-500 text-sm rounded-md">
             Options
           </Menu.Button>
@@ -151,7 +152,7 @@ function ExampleShift() {
       title="Shift"
       contentClass="relative h-[320px] overflow-y-auto border rounded"
       data-testid="block-shift"
-      form={
+      form={(
         <div className="absolute top-0 right-0">
           <div className="flex items-center">
             <div className="mr-2">shift</div>
@@ -159,16 +160,16 @@ function ExampleShift() {
               type="number"
               className="w-[100px] px-2 py-1 border border-gray-300 rounded"
               value={shift}
-              onChange={event => setShift(parseInt(event.target.value))}
+              onChange={event => setShift(Number.parseInt(event.target.value))}
               data-testid="shift-input"
             />
           </div>
         </div>
-      }
+      )}
     >
       <div className="h-[800px] pt-[382px]">
         <Menu>
-          <Float show placement="right" shift={shift} zIndex={99}>
+          <Float show placement="right" shift={shift} zIndex={99} transform>
             <Menu.Button className="flex justify-center items-center mx-auto px-5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-500 text-sm rounded-md">
               Options
             </Menu.Button>
@@ -212,7 +213,7 @@ function ExampleFlip() {
       title="Flip"
       contentClass="relative h-[320px] overflow-y-auto border rounded"
       data-testid="block-flip"
-      form={
+      form={(
         <div className="absolute top-0 right-0">
           <div className="flex items-center">
             <div className="mr-2">flip</div>
@@ -220,16 +221,16 @@ function ExampleFlip() {
               type="number"
               className="w-[100px] px-2 py-1 border border-gray-300 rounded"
               value={flip}
-              onChange={event => setFlip(parseInt(event.target.value))}
+              onChange={event => setFlip(Number.parseInt(event.target.value))}
               data-testid="flip-input"
             />
           </div>
         </div>
-      }
+      )}
     >
       <div className="h-[800px] pt-[382px]">
         <Menu>
-          <Float show placement="bottom" flip={flip} zIndex={99}>
+          <Float show placement="bottom" flip={flip} zIndex={99} transform>
             <Menu.Button className="flex justify-center items-center mx-auto px-5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-500 text-sm rounded-md">
               Options
             </Menu.Button>
@@ -261,6 +262,50 @@ function ExampleFlip() {
             </Menu.Items>
           </Float>
         </Menu>
+      </div>
+    </Block>
+  )
+}
+
+function ExampleHide() {
+  const blockHideRef = useRef(null)
+
+  useEffect(() => {
+    blockHideRef.current?.scrollTo(0, 220)
+  }, [])
+
+  return (
+    <Block
+      title="Hide"
+      contentClass="relative pb-[150px]"
+      data-testid="block-hide"
+    >
+      <div
+        ref={blockHideRef}
+        className="h-[320px] overflow-y-auto border rounded"
+        data-testid="block-hide-scrollable"
+      >
+        <div className="h-[720px] pt-[330px]">
+          <Popover>
+            <Float
+              show
+              placement="bottom"
+              hide={[{}, { strategy: 'escaped' }]}
+              referenceHiddenClass="invisible"
+              escapedClass="opacity-50"
+              zIndex="99"
+              transform
+            >
+              <Popover.Button className="w-16 h-16 flex justify-center items-center mx-auto px-5 py-2 bg-indigo-500 text-white">
+                Box
+              </Popover.Button>
+
+              <Popover.Panel static className="px-3 py-1.5 bg-red-500 text-white focus:outline-none">
+                Floating
+              </Popover.Panel>
+            </Float>
+          </Popover>
+        </div>
       </div>
     </Block>
   )
