@@ -18,14 +18,9 @@ import {
 import type { ComputedRef, FunctionalComponent, InjectionKey, PropType, Ref, SetupContext, ShallowRef, VNode } from 'vue'
 import { Portal, TransitionChild } from '@headlessui/vue'
 import { useFloating } from '@floating-ui/vue'
+import type { AutoPlacementOptions, FlipOptions, HideOptions, OffsetOptions, ShiftOptions } from '@floating-ui/core'
 import { autoUpdate } from '@floating-ui/dom'
-import type { DetectOverflowOptions, FloatingElement, Middleware, Placement, ReferenceElement, Strategy, VirtualElement } from '@floating-ui/dom'
-import type { OffsetOptions } from '@floating-ui/core/src/middleware/offset'
-import type { ShiftOptions } from '@floating-ui/core/src/middleware/shift'
-import type { FlipOptions } from '@floating-ui/core/src/middleware/flip'
-import type { AutoPlacementOptions } from '@floating-ui/core/src/middleware/autoPlacement'
-import type { HideOptions } from '@floating-ui/core/src/middleware/hide'
-import type { AutoUpdateOptions } from '@floating-ui/dom/src/autoUpdate'
+import type { AutoUpdateOptions, DetectOverflowOptions, FloatingElement, Middleware, Placement, ReferenceElement, Strategy, VirtualElement } from '@floating-ui/dom'
 import { dom } from './utils/dom'
 import { roundByDPR } from './utils/dpr'
 import { flattenFragment, isValidElement, isVisibleDOMElement } from './utils/render'
@@ -444,7 +439,14 @@ export function useFloat<T extends ReferenceElement>(
     placement: propPlacement,
     strategy: propStrategy,
     middleware,
-    transform: props.dialog ? false : props.transform, // If enable dialog mode, then set `transform` to false.
+    // If enable dialog mode, then set `transform` to false.
+    transform: props.dialog
+      ? false
+      : props.transform,
+    // Fix transition not smooth bug when dialog mode enabled.
+    whileElementsMounted: props.dialog
+      ? () => () => {}
+      : undefined,
   })
 
   const referenceElWidth = ref<number | null>(null)
